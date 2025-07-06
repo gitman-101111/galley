@@ -1,0 +1,38 @@
+services:
+  galley:
+    hostname: galley
+    container_name: galley
+    volumes:
+      - './src/:/src'
+      - './build.sh:/build.sh'
+      - './build_mods:/build_mods'
+      - './tmp:/tmp'
+    environment:
+      - USR=1000
+      - GRP=1000
+      - OS=grapheneos-16
+      - TGT=tangorpro,caiman
+      - TAG=16 # Which GOS tag to pull from
+      - GOOGLE_BUILD_ID=BP2A.250605.031.A2 # necessary for target_release specification
+      - VERSION=16 # Android version you're building for
+      - UPDATE_URL=https://your.own.updateserver/ #include trailing slash!
+      - OFFICIAL_BUILD=true
+      - REBUILD=false
+      - ROOT_TYPE=magisk # 'magisk' or 'kernelsu' NOTE: If KernelSU is selected, the kernel will be fetched and built!; KernelSU build not tested on Android 16
+      - CERTPASS= # TODO read this value if it's not blank
+      - PASSPHRASE_AVB=
+      - PASSPHRASE_OTA=
+      - PUSH=false
+      - APPRISE_CONFIG= #https://github.com/caronc/apprise/wiki
+      - RSYNC_TARGET=user@192.168.20.145:/opt/nginx/data/
+    tty: true
+    stdin_open: true
+    restart: no
+    # Need to run as privileged to mount/extract images
+    privileged: true
+    image: galley:latest
+    build:
+      context: ./
+      dockerfile: Dockerfile
+
+#docker-compose -f docker-compose.yml up -d
