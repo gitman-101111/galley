@@ -134,8 +134,7 @@ sudo chown -R $USR:$GRP /src
 sudo chown -R $USR:$GRP /build_mods
 
 # Figure out what we're doing
-export num='^[0-9]+$'
-if [[ $TAG =~ $num ]]; then
+if [[ "$TAG" =~ ^[0-9]{10}$ ]]; then
     echo -e "${GREEN}Release branch tag detected! ${NC}"
     repo init -u https://github.com/GrapheneOS/platform_manifest.git -b $TAG
 
@@ -157,11 +156,11 @@ if [[ "$SYNC" == true ]]; then
   repo forall -vc "git reset --hard"
 
   # Update repo
-  # sudo apt upgrade repo -y
+  sudo apt upgrade repo -y
 
   cd /src/$WORKDIR
-  # repo sync --force-sync
-  repo_sync_until_success
+  repo sync --force-sync
+  #repo_sync_until_success
 
   # If stuff couldn't be synced (packages/Updater, build/make/target/product)
   # Delete and then restore deleted files!? ex.
@@ -251,7 +250,7 @@ if [[ "$AAPT2" == true ]]; then
   source /src/$WORKDIR/build/envsetup.sh
   echo -e "${GREEN}Compiling aapt2 ${NC}"
   lunch sdk_phone64_x86_64-cur-user
-  m aapt2
+  m arsclib
   if [[ -s $OUT_DIR/error.log ]]; then
       echo -e "${RED}aapt2 compile failed! ${NC}"
       apprise -t "The Galley" -b "aapt2 build failed!" $APPRISE_CONFIG
@@ -278,8 +277,8 @@ if [[ "$CUSTOMIZE" == true ]]; then
   apprise -t "The Galley" -b "Applying pre-build mods" $APPRISE_CONFIG
 
   # Custom hosts for some OOTB adblocking
-  #echo -e "${BLUE}Modifying hosts file ${NC}"
-  #curl https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o system/core/rootdir/etc/hosts
+  echo -e "${BLUE}Modifying hosts file ${NC}"
+  curl https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o system/core/rootdir/etc/hosts
 
   # Copy over additional prebuilts
   # export gmscore=$(echo -e "$(curl https://api.github.com/repos/microg/GmsCore/releases/latest -s | jq .name -r)")    
@@ -289,33 +288,33 @@ if [[ "$CUSTOMIZE" == true ]]; then
   # md5sum /src/$WORKDIR/external/GmsCore/GmsCore.apk
 
   # Copy custom boot animation
-  #echo -e "${BLUE}Replacing bootanimation ${NC}"
-  #cp /build_mods/bootanimation.zip frameworks/base/data/
+  echo -e "${BLUE}Replacing bootanimation ${NC}"
+  cp /build_mods/bootanimation.zip frameworks/base/data/
 
   # Copy custom notification sound (and set perms)
-  #echo -e "${BLUE}Copying custom notification sounds and setting permissions ${NC}"
-  #cp /build_mods/sound.ogg frameworks/base/data/sounds/notifications/
-  #chmod 644 frameworks/base/data/sounds/notifications/sound.ogg
-  # patching will be handled by frameworks-base-patches-$VERSION.patch
+  echo -e "${BLUE}Copying custom notification sounds and setting permissions ${NC}"
+  cp /build_mods/fasten_seatbelt.ogg frameworks/base/data/sounds/notifications/
+  chmod 644 frameworks/base/data/sounds/notifications/fasten_seatbelt.ogg
+  # patching will be handled by frameworks-base-patches-14.patch
 
   # Patch it up
-  #echo -e "${RED}Applying frameworks/base patch to build ${NC}"
-  #git apply --directory="/src/$WORKDIR/frameworks/base" --unsafe-paths "/build_mods/patches/$VERSION/frameworks-base-patches-$VERSION.patch"
-  #if [ $? -ne 0 ]; then
-  #    # there was an error
-  #    echo -e "${RED}git apply of frameworks/base patch failed ${NC}"
-  #else
-  #    echo -e "${GREEN}frameworks/base patches successfully applied ${NC}"
-  #fi
+  echo -e "${RED}Applying frameworks/base patch to build ${NC}"
+  git apply --directory="/src/$WORKDIR/frameworks/base" --unsafe-paths "/build_mods/patches/$VERSION/frameworks-base-patches-$VERSION.patch"
+  if [ $? -ne 0 ]; then
+      # there was an error
+      echo -e "${RED}git apply of frameworks/base patch failed ${NC}"
+  else
+      echo -e "${GREEN}frameworks/base patches successfully applied ${NC}"
+  fi
 
-  #echo -e "${RED}Applying build/make patch to build ${NC}"
-  #git apply --directory="/src/$WORKDIR/build/make" --unsafe-paths "/build_mods/patches/$VERSION/build-make-patches-$VERSION.patch"
-  #if [ $? -ne 0 ]; then
-  #    # there was an error
-  #    echo -e "${RED}git apply of build/make patch failed ${NC}"
-  #else
-  #    echo -e "${GREEN}build/make patches successfully applied ${NC}"
-  #fi
+  echo -e "${RED}Applying build/make patch to build ${NC}"
+  git apply --directory="/src/$WORKDIR/build/make" --unsafe-paths "/build_mods/patches/$VERSION/build-make-patches-$VERSION.patch"
+  if [ $? -ne 0 ]; then
+      # there was an error
+      echo -e "${RED}git apply of build/make patch failed ${NC}"
+  else
+      echo -e "${GREEN}build/make patches successfully applied ${NC}"
+  fi
   # cd /src/$WORKDIR/
   # read -n 1 -p "Patches applied; Press any key to continue..."
 
@@ -422,7 +421,7 @@ fi
 
 if [ "$ROM" == true ]; then
   echo "ROM is true"
-  echo "$targets[*]"
+  echo "{$targets[*]}"
 
   for target in "${targets[@]}"
   do
@@ -460,9 +459,9 @@ if [ "$ROM" == true ]; then
     apprise -t "The Galley" -b "Release signed and packaged for $target!" $APPRISE_CONFIG
 
     if [[ "$ROOT_TYPE" == "magisk" ]]; then
-      elif [[ "$target" == "tangorpro" ]]; then
+      if [[ "$target" == "tangorpro" ]]; then
           echo -e "${RED}Tangorpro detected ${NC}"
-          export preinit=sda5
+          export preinit=sda5 #(not sda5t...?)
       elif [[ "$target" == "caiman" ]]; then
           echo -e "${RED}Caiman detected ${NC}"
           export preinit=sda10
@@ -508,13 +507,13 @@ if [ "$ROM" == true ]; then
       if [[ $(grep -R $target "/src/$WORKDIR/releases/filesToPushToUpdateServer.txt") == true ]]; then
         echo -e "${RED}$target found, skipping${NC}"
       else
-        echo -e "$target-ota_update-*.zip\n$target-factory-*.zip\n$target-factory-*.zip.sig\n$target-testing\n$target-beta\n$target-stable\n" >> /src/$WORKDIR/releases/filesToPushToUpdateServer.txt
+        echo -e "$target-ota_update-$BUILD_NUMBER.zip\n$target-factory-$BUILD_NUMBER.zip\n$target-factory-$BUILD_NUMBER.zip.sig\n$target-testing\n$target-beta\n$target-stable\n" >> /src/$WORKDIR/releases/filesToPushToUpdateServer.txt
       fi
 
       echo -e "
 
       # If running from working directory of container where "src" is present...
-      rsync -av --include-from=src/$WORKDIR/releases/filesToPushToUpdateServer.txt --no-relative src/$WORKDIR/releases/$BUILD_NUMBER/release-$target-$BUILD_NUMBER/ $RSYNC_TARGET
+      rsync -av --files-from=src/$WORKDIR/releases/filesToPushToUpdateServer.txt --no-relative src/$WORKDIR/releases/$BUILD_NUMBER/release-$target-$BUILD_NUMBER/ $RSYNC_TARGET
 
       "
       apprise -t "The Galley" -b "Ready to be pushed!" $APPRISE_CONFIG
