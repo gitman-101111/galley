@@ -265,9 +265,8 @@ if [[ "$EXTRACT" == true ]]; then
   for target in "${targets[@]}"
   do
     # Extract vendor files
-    clear
     echo -e "${GREEN}Downloading and extracting vendor files for $target ${NC}"
-    ./vendor/adevtool/bin/run generate-all -d $target
+    adevtool generate-all -d $target
   done
   # echo -e "${GREEN}Vendor files for ${targets} downloaded!"
 fi
